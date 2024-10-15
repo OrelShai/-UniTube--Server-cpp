@@ -3,8 +3,42 @@
 #include <netinet/in.h>   // For sockaddr_in structure (IPV4 addressing)
 #include <unistd.h>       // For close() to close the socket
 #include <cstring>        // For memset() and string operations
+#include <thread>         // For std::thread
+#include <vector>         // For std::vector to store threads
 
 using namespace std;
+
+
+// Function that handles communication with a client
+void handle_client(int client_sock) {
+    char buffer[4096];  // Buffer to store incoming data
+    int expected_data_len = sizeof(buffer);
+
+    // Receive data from the client
+    int read_bytes = recv(client_sock, buffer, expected_data_len, 0);
+    if (read_bytes == 0) {
+        // If the client closed the connection
+        cout << "Connection closed by client." << endl;
+    } else if (read_bytes < 0) {
+        // If receiving data fails, print an error message
+        perror("Error receiving data from client");
+    } else {
+        // Print the received data from the client
+        cout << "Received: " << buffer << endl;
+
+        // Send data back to the client (Echo back the message)
+        int sent_bytes = send(client_sock, buffer, read_bytes, 0);  // Echo the received message
+        if (sent_bytes < 0) {
+            // If sending data back fails, print an error message
+            perror("Error sending data to client");
+        }
+    }
+
+    // Close the client socket after communication is done
+    close(client_sock);
+}
+
+
 
 int main() {
     const int server_port = 5555;  // The port number the server will listen on
@@ -40,42 +74,36 @@ int main() {
         return 1;
     }
 
-    // Step 5: Accept a client connection
-    struct sockaddr_in client_sin;
-    unsigned int addr_len = sizeof(client_sin);
-    int client_sock = accept(sock, (struct sockaddr *) &client_sin, &addr_len);
-    if (client_sock < 0) {
-        // If accepting fails, print an error message and exit
-        perror("Error accepting client");
-        close(sock);
-        return 1;
+
+    cout << "Server listening on port " << server_port << endl;
+
+    // Vector to keep track of the client threads
+    vector<thread> client_threads;
+
+    while (true) {
+        // Step 5: Accept a client connection
+        struct sockaddr_in client_sin;
+        unsigned int addr_len = sizeof(client_sin);
+        int client_sock = accept(sock, (struct sockaddr *) &client_sin, &addr_len);
+        if (client_sock < 0) {
+            // If accepting fails, print an error message and exit
+            perror("Error accepting client");
+            continue;  // Continue to accept new clients even if one fails
+        }
+
+        cout << "New client connected" << endl;
+
+        // Step 6: Create a new thread to handle the client communication
+        client_threads.push_back(thread(handle_client, client_sock));
     }
 
-    // Step 6: Receive data from the client
-    char buffer[4096];  // Buffer to store incoming data
-    int expected_data_len = sizeof(buffer);
-    int read_bytes = recv(client_sock, buffer, expected_data_len, 0);
-    if (read_bytes == 0) {
-        // If the client closed the connection
-        cout << "Connection closed by client." << endl;
-    } else if (read_bytes < 0) {
-        // If receiving data fails, print an error message
-        perror("Error receiving data from client");
-    } else {
-        // Print the received data from the client
-        cout << "Received: " << buffer << endl;
-    }
+    // Step 7: Close the server socket when done (this will never be reached in this example)
+    close(sock);
 
-    // Step 7: Send data back to the client (Echo back the message)
-    int sent_bytes = send(client_sock, buffer, read_bytes, 0);  // Echo the received message
-    if (sent_bytes < 0) {
-        // If sending data back fails, print an error message
-        perror("Error sending data to client");
+    // Wait for all client threads to finish
+    for (auto& t : client_threads) {
+        t.join();
     }
-
-    // Step 8: Close the sockets
-    close(client_sock);  // Close the client socket after communication is done
-    close(sock);         // Close the server socket
 
     return 0;
 }
