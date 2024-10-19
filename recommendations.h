@@ -1,14 +1,14 @@
-#ifndef RECOMMENDATIONS_H // הגנה מפני כולל כפול
+#ifndef RECOMMENDATIONS_H
 #define RECOMMENDATIONS_H
 
 #include <unordered_map>
 #include <vector>
 #include <string>
 
-// מפה לא מסודרת שבה מפתחות הם סרטונים והערכים הם רשימות של משתמשים
+// מפה שבה המפתחות הם סרטונים והערכים הם רשימות של משתמשים שצפו בהם
 extern std::unordered_map<std::string, std::vector<std::string>> videoViews;
 
-// מפה לא מסודרת שבה מפתחות הם משתמשים והערכים הם רשימות של סרטונים
+// מפה שבה המפתחות הם משתמשים והערכים הם רשימות של סרטונים שצפו בהם
 extern std::unordered_map<std::string, std::vector<std::string>> userVideos;
 
 // פונקציה להוספת צפיה

@@ -1,106 +1,121 @@
 #include <iostream>
-#include <sys/socket.h>   // For socket(), bind(), listen(), accept(), send(), recv()
-#include <netinet/in.h>   // For sockaddr_in structure (IPV4 addressing)
-#include <unistd.h>       // For close() to close the socket
-#include <cstring>        // For memset() and string operations
-#include <thread>         // For std::thread
-#include <vector>         // For std::vector to store threads
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <cstring>
+#include <thread>
+#include <vector>
+#include <unordered_map>
+#include <string>
+#include <sstream>
+#include <algorithm>  // הוספת ספריית אלגוריתמים
 
 using namespace std;
 
+std::unordered_map<std::string, std::vector<std::string>> userVideos; // מפה לשמירת סרטונים לפי משתמש
+std::unordered_map<std::string, std::vector<std::string>> videoUsers; // מפה לשמירת משתמשים לפי סרטונים
+
+void addView(const std::string& user, const std::string& video) {
+    userVideos[user].push_back(video); // הוספת סרטון למשתמש
+    videoUsers[video].push_back(user); // הוספת משתמש לסרטון
+}
 
 // Function that handles communication with a client
 void handle_client(int client_sock) {
-    char buffer[4096];  // Buffer to store incoming data
-    int expected_data_len = sizeof(buffer);
+    char buffer[4096];
+    int read_bytes = recv(client_sock, buffer, sizeof(buffer), 0);
+    if (read_bytes > 0) {
+        buffer[read_bytes] = '\0'; // Null-terminate the string
+        std::string message(buffer);
+        
+        std::string userId, videoId;
+        std::istringstream iss(message); // יצירת istringstream מההודעה
+        if (iss >> userId >> videoId) { // מפורק את המידע מההודעה
+            addView(userId, videoId); // הוספת צפיה
+            cout << "Added view: User " << userId << " watched Video " << videoId << endl;
 
-    // Receive data from the client
-    int read_bytes = recv(client_sock, buffer, expected_data_len, 0);
-    if (read_bytes == 0) {
-        // If the client closed the connection
-        cout << "Connection closed by client." << endl;
-    } else if (read_bytes < 0) {
-        // If receiving data fails, print an error message
-        perror("Error receiving data from client");
-    } else {
-        // Print the received data from the client
-        cout << "Received: " << buffer << endl;
+            // קבלת המלצות מהמשתמש
+            std::vector<std::string> recommendations = getRecommendations(userId);
+            std::string recommendationMessage = "Recommendations: ";
+            for (const auto& rec : recommendations) {
+                recommendationMessage += rec + " ";
+            }
+            send(client_sock, recommendationMessage.c_str(), recommendationMessage.length(), 0); // שליחת המלצות
+        } else {
+            cout << "Invalid message format: " << message << endl;
+        }
+    }
+    close(client_sock); // סגירת החיבור
+}
 
-        // Send data back to the client (Echo back the message)
-        int sent_bytes = send(client_sock, buffer, read_bytes, 0);  // Echo the received message
-        if (sent_bytes < 0) {
-            // If sending data back fails, print an error message
-            perror("Error sending data to client");
+// פונקציה לקבלת המלצות
+std::vector<std::string> getRecommendations(const std::string& user) {
+    std::vector<std::string> recommendations;
+
+    if (userVideos.find(user) != userVideos.end()) {
+        for (const auto& video : userVideos[user]) {
+            for (const auto& otherUser : videoUsers[video]) {
+                if (otherUser != user) { // הימנע מהוספת סרטונים שהמשתמש כבר צפה בהם
+                    for (const auto& recVideo : userVideos[otherUser]) {
+                        // בדוק אם הסרטון כבר מומלץ
+                        if (std::find(recommendations.begin(), recommendations.end(), recVideo) == recommendations.end()) {
+                            recommendations.push_back(recVideo); // הוסף לסרטונים המומלצים
+                        }
+                    }
+                }
+            }
         }
     }
 
-    // Close the client socket after communication is done
-    close(client_sock);
+    return recommendations; // החזרת רשימת סרטונים מומלצים
 }
-
-
 
 int main() {
     const int server_port = 5555;  // The port number the server will listen on
 
-    // Step 1: Create a TCP socket
-    int sock = socket(AF_INET, SOCK_STREAM, 0);  // AF_INET: IPv4, SOCK_STREAM: TCP
+    // Create a TCP socket
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
-        // If socket creation fails, print an error message and exit
         perror("Error creating socket");
-        return 1;  // Return error code 1
+        return 1;  
     }
-
-    // Step 2: Prepare sockaddr_in structure (server address)
+    
     struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(sin));                // Zero out the structure
-    sin.sin_family = AF_INET;                    // Set the address family to IPv4
-    sin.sin_addr.s_addr = INADDR_ANY;            // Listen on any available interface (0.0.0.0)
-    sin.sin_port = htons(server_port);           // Convert port number to network byte order
+    memset(&sin, 0, sizeof(sin));                
+    sin.sin_family = AF_INET;                    
+    sin.sin_addr.s_addr = INADDR_ANY;           
+    sin.sin_port = htons(server_port);           
 
-    // Step 3: Bind the socket to the port (5555)
     if (bind(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-        // If binding fails, print an error message and exit
         perror("Error binding socket");
-        close(sock);  // Close the socket before exiting
+        close(sock);
         return 1;
     }
 
-    // Step 4: Start listening for incoming connections
     if (listen(sock, 5) < 0) {
-        // If listening fails, print an error message and exit
         perror("Error listening to socket");
         close(sock);
         return 1;
     }
 
-
     cout << "Server listening on port " << server_port << endl;
 
-    // Vector to keep track of the client threads
     vector<thread> client_threads;
 
     while (true) {
-        // Step 5: Accept a client connection
         struct sockaddr_in client_sin;
         unsigned int addr_len = sizeof(client_sin);
         int client_sock = accept(sock, (struct sockaddr *) &client_sin, &addr_len);
         if (client_sock < 0) {
-            // If accepting fails, print an error message and exit
             perror("Error accepting client");
-            continue;  // Continue to accept new clients even if one fails
+            continue;
         }
 
         cout << "New client connected" << endl;
-
-        // Step 6: Create a new thread to handle the client communication
         client_threads.push_back(thread(handle_client, client_sock));
     }
 
-    // Step 7: Close the server socket when done (this will never be reached in this example)
     close(sock);
-
-    // Wait for all client threads to finish
     for (auto& t : client_threads) {
         t.join();
     }
