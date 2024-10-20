@@ -78,7 +78,7 @@ void saveHistoryToFile() {
     ofstream outfile("history.txt", ios::app); // Open file in append mode
     for (const auto& pair : userVideos) {
         for (const auto& video : pair.second) {
-            outfile << pair.first << " " << video << endl; // Save user and video
+            outfile << "UserName: " << pair.first << ", VideoID: " << video << endl; // Save user and video
         }
     }
     outfile.close(); // Close the file
