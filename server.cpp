@@ -17,6 +17,9 @@ using namespace std;
 std::unordered_map<std::string, std::vector<std::string>> userVideos; // Map to store videos by user
 std::unordered_map<std::string, std::vector<std::string>> videoUsers; // Map to store users by videos
 
+// Function to save history to file
+void saveHistoryToFile(); // Declare the function here
+
 // Function to print the current state of the maps
 void printData() {
     cout << "Current userVideos mapping:" << endl;
