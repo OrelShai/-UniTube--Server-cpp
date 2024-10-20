@@ -9,6 +9,7 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <fstream> // Added for file operations
 
 using namespace std;
 
@@ -16,8 +17,8 @@ using namespace std;
 std::unordered_map<std::string, std::vector<std::string>> userVideos; // Map to store videos by user
 std::unordered_map<std::string, std::vector<std::string>> videoUsers; // Map to store users by videos
 
+// Function to print the current state of the maps
 void printData() {
-    // Print the data in the maps
     cout << "Current userVideos mapping:" << endl;
     for (const auto& pair : userVideos) {
         cout << "User: " << pair.first << " -> Videos: ";
@@ -37,11 +38,47 @@ void printData() {
     }
 }
 
+// Function to add a view to the maps
 void addView(const std::string& user, const std::string& video) {
     userVideos[user].push_back(video); // Add video for the user
     videoUsers[video].push_back(user); // Add user for the video
     cout << "Added view: User " << user << " watched Video " << video << endl; // Updated print
     printData(); // Print the data after adding the view
+    saveHistoryToFile(); // Save the updated history to the file
+}
+
+// Function to load history from file
+void loadHistoryFromFile() {
+    ifstream infile("history.txt");
+    if (!infile) {
+        // File doesn't exist, create it
+        ofstream outfile("history.txt");
+        outfile.close(); // Close the file after creating
+        cout << "History file created." << endl;
+        return; // Exit the function if the file doesn't exist
+    }
+    
+    std::string line;
+    while (getline(infile, line)) {
+        std::istringstream iss(line);
+        std::string user, video;
+        if (iss >> user >> video) {
+            userVideos[user].push_back(video);
+            videoUsers[video].push_back(user);
+        }
+    }
+    infile.close(); // Close the file
+}
+
+// Function to save history to file
+void saveHistoryToFile() {
+    ofstream outfile("history.txt", ios::app); // Open file in append mode
+    for (const auto& pair : userVideos) {
+        for (const auto& video : pair.second) {
+            outfile << pair.first << " " << video << endl; // Save user and video
+        }
+    }
+    outfile.close(); // Close the file
 }
 
 // Function that handles communication with a client
@@ -88,6 +125,9 @@ void handle_client(int client_sock) {
 
 int main() {
     const int server_port = 5555;  // The port number the server will listen on
+
+    // Load existing history from the file at startup
+    loadHistoryFromFile();
 
     // Create a TCP socket
     int sock = socket(AF_INET, SOCK_STREAM, 0);
