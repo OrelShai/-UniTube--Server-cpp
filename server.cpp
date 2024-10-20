@@ -12,12 +12,12 @@
 
 using namespace std;
 
-// מפות לא מסודרות
-std::unordered_map<std::string, std::vector<std::string>> userVideos; // מפה לשמירת סרטונים לפי משתמש
-std::unordered_map<std::string, std::vector<std::string>> videoUsers; // מפה לשמירת משתמשים לפי סרטונים
+// Unordered maps
+std::unordered_map<std::string, std::vector<std::string>> userVideos; // Map to store videos by user
+std::unordered_map<std::string, std::vector<std::string>> videoUsers; // Map to store users by videos
 
 void printData() {
-    // הדפסת המידע במפות
+    // Print the data in the maps
     cout << "Current userVideos mapping:" << endl;
     for (const auto& pair : userVideos) {
         cout << "User: " << pair.first << " -> Videos: ";
@@ -38,64 +38,52 @@ void printData() {
 }
 
 void addView(const std::string& user, const std::string& video) {
-    if (user != "guest") { // בדיקה אם המשתמש לא אורח
-        userVideos[user].push_back(video); // הוספת סרטון למשתמש
-        videoUsers[video].push_back(user); // הוספת משתמש לסרטון
-        cout << "Added view: User " << user << " watched Video " << video << endl; // הדפסה מעודכנת
-        printData(); // הדפסת הנתונים לאחר הוספת צפיה
-    } else {
-        cout << "Guest user, not added to the map." << endl; // הודעה אם המשתמש הוא "guest"
-    }
+    userVideos[user].push_back(video); // Add video for the user
+    videoUsers[video].push_back(user); // Add user for the video
+    cout << "Added view: User " << user << " watched Video " << video << endl; // Updated print
+    printData(); // Print the data after adding the view
 }
 
-// פונקציה לקבלת המלצות
-std::vector<std::string> getRecommendations(const std::string& user) {
-    std::vector<std::string> recommendations;
-
-    if (userVideos.find(user) != userVideos.end()) {
-        for (const auto& video : userVideos[user]) {
-            for (const auto& otherUser : videoUsers[video]) {
-                if (otherUser != user) { // הימנע מהוספת סרטונים שהמשתמש כבר צפה בהם
-                    for (const auto& recVideo : userVideos[otherUser]) {
-                        // בדוק אם הסרטון כבר קיים בהמלצות
-                        if (std::find(recommendations.begin(), recommendations.end(), recVideo) == recommendations.end()) {
-                            recommendations.push_back(recVideo); // הוסף לסרטונים המומלצים
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return recommendations; // החזרת רשימת סרטונים מומלצים
-}
-
-// פונקציה שמטפלת בתקשורת עם לקוח
+// Function that handles communication with a client
 void handle_client(int client_sock) {
     char buffer[4096];
     int read_bytes = recv(client_sock, buffer, sizeof(buffer), 0);
+    
+    cout << "Attempting to receive message from client..." << endl; // Print message before receiving
+
     if (read_bytes > 0) {
         buffer[read_bytes] = '\0'; // Null-terminate the string
         std::string message(buffer);
         
-        std::string userId, videoId;
-        std::istringstream iss(message); // יצירת istringstream מההודעה
-        if (iss >> userId >> videoId) { // מפורק את המידע מההודעה
-            addView(userId, videoId); // הוספת צפיה
-            cout << "Received message: " << message << endl; // הדפסת ההודעה שהתקבלה
+        cout << "Raw message received: " << message << endl; // Print the raw message
 
-            // קבלת המלצות מהמשתמש
-            std::vector<std::string> recommendations = getRecommendations(userId);
-            std::string recommendationMessage = "Recommendations: ";
-            for (const auto& rec : recommendations) {
-                recommendationMessage += rec + " ";
-            }
-            send(client_sock, recommendationMessage.c_str(), recommendationMessage.length(), 0); // שליחת המלצות
+        std::string userName; // User name
+        std::string videoId; // Video ID
+
+        // Assuming the message looks like: "User Noa Kirel watched Video 7"
+        size_t pos1 = message.find("User ");
+        size_t pos2 = message.find(" watched");
+        size_t pos3 = message.find("Video ") + 6; // Add 6 to move past "Video "
+        
+        if (pos1 != std::string::npos && pos2 != std::string::npos && pos3 != std::string::npos) {
+            userName = message.substr(pos1 + 5, pos2 - pos1 - 5); // Get the full name
+            videoId = message.substr(pos3); // Get the video ID
+
+            // Print the extracted variables
+            cout << "Extracted userName: " << userName << ", videoId: " << videoId << endl;
+
+            addView(userName, videoId); // Add view
+            cout << "Received message: " << message << endl; // Print the received message
         } else {
-            cout << "Invalid message format: " << message << endl; // הודעת שגיאה אם הפורמט לא תקין
+            cout << "Invalid message format: " << message << endl; // Print error message if format is invalid
         }
+    } else if (read_bytes == 0) {
+        cout << "Connection closed by client." << endl; // Print message on connection closure
+    } else {
+        perror("Error receiving data from client"); // Print error on failure
     }
-    close(client_sock); // סגירת החיבור
+    
+    close(client_sock); // Close the connection
 }
 
 int main() {
