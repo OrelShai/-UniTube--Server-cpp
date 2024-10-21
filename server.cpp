@@ -10,6 +10,7 @@
 #include <sstream>
 #include <algorithm>
 #include <fstream> // Added for file operations
+#include "recommendations.h" // Include the recommendations header
 
 using namespace std;
 
@@ -85,42 +86,47 @@ void saveHistoryToFile() {
 }
 
 // Function that handles communication with a client
+// Function to handle incoming messages
 void handle_client(int client_sock) {
     char buffer[4096];
     int read_bytes = recv(client_sock, buffer, sizeof(buffer), 0);
-    
-    cout << "Attempting to receive message from client..." << endl; // Print message before receiving
 
     if (read_bytes > 0) {
         buffer[read_bytes] = '\0'; // Null-terminate the string
         std::string message(buffer);
-        
-        cout << "Raw message received: " << message << endl; // Print the raw message
 
-        std::string userName; // User name
-        std::string videoId; // Video ID
+        if (message.find("GET") == 0) { // Check if the message is a GET request
+            // Handle the GET request here
+            std::istringstream requestStream(message);
+            std::string method, url;
+            requestStream >> method >> url;
 
-        // Assuming the message looks like: "User Noa Kirel watched Video 7"
-        size_t pos1 = message.find("User ");
-        size_t pos2 = message.find(" watched");
-        size_t pos3 = message.find("Video ") + 6; // Add 6 to move past "Video "
-        
-        if (pos1 != std::string::npos && pos2 != std::string::npos && pos3 != std::string::npos) {
-            userName = message.substr(pos1 + 5, pos2 - pos1 - 5); // Get the full name
-            videoId = message.substr(pos3); // Get the video ID
-
-            // Print the extracted variables
-            cout << "Extracted userName: " << userName << ", videoId: " << videoId << endl;
-
-            addView(userName, videoId); // Add view
-            cout << "Received message: " << message << endl; // Print the received message
+            // Extract username and videoId from the URL
+            std::string username, videoId;
+            size_t userStart = url.find("username=") + 9;
+            size_t userEnd = url.find("&", userStart);
+            username = url.substr(userStart, userEnd - userStart);
+            size_t videoStart = url.find("videoId=") + 8;
+            videoId = url.substr(videoStart);
+            
+            // Now call your function to get recommendations
+            getRecommendations(username, videoId);
         } else {
-            cout << "Invalid message format: " << message << endl; // Print error message if format is invalid
+            // Handle the User message (like "User Noa Kirel watched Video 9")
+            size_t pos1 = message.find("User ");
+            size_t pos2 = message.find(" watched");
+            size_t pos3 = message.find("Video ") + 6; // Add 6 to move past "Video "
+            
+            if (pos1 != std::string::npos && pos2 != std::string::npos && pos3 != std::string::npos) {
+                std::string userName = message.substr(pos1 + 5, pos2 - pos1 - 5);
+                std::string videoId = message.substr(pos3);
+                // Process the view...
+            } else {
+                std::cout << "Invalid message format: " << message << std::endl;
+            }
         }
-    } else if (read_bytes == 0) {
-        cout << "Connection closed by client." << endl; // Print message on connection closure
     } else {
-        perror("Error receiving data from client"); // Print error on failure
+        std::cout << "Error receiving data from client." << std::endl;
     }
     
     close(client_sock); // Close the connection
