@@ -11,11 +11,12 @@
 #include <sstream>
 #include <algorithm>  // עבור std::find
 #include "server.h"
+#include "recommendations.h"
+
 
 // מפות לניהול המשתמשים והסרטונים
 std::map<std::string, std::vector<std::string>> userVideos;  // מפה של סרטונים לפי משתמשים
 std::map<std::string, std::vector<std::string>> videoUsers;  // מפה של משתמשים לפי סרטונים
-std::map<std::string, int> frequencyList;  // מפה של מספר הצפיות לפי סרטון
 std::mutex dbMutex;  // נעילה עבור גישה למסד נתונים במקביל
 
 // פונקציה לטעינת הנתונים מקובץ
@@ -153,10 +154,10 @@ const std::map<std::string, std::vector<std::string>>& getVideoToUsers() {
     return videoUsers;
 }
 
-// פונקציה לטיפול בלקוחות
 void handleClient(int clientSocket) {
-    char buffer[1024] = {0};
-    int readBytes = read(clientSocket, buffer, 1024);
+    char buffer[4096] = {0};
+    int readBytes = recv(clientSocket, buffer, 4096, 0);
+
     if (readBytes > 0) {
         buffer[readBytes] = '\0';  // סיום מחרוזת
         std::string message(buffer);
@@ -164,29 +165,61 @@ void handleClient(int clientSocket) {
         std::string userName;
         std::string videoId;
 
-        // חילוץ נתוני המשתמש והסרטון מההודעה
-        size_t pos1 = message.find("User ");
-        size_t pos2 = message.find(" watched");
-        size_t pos3 = message.find("Video ") + 6;
+        // אם ההודעה מכילה "recommend" - מחזירה רשימת סרטונים מומלצים
+        if (message.find("recommend:") == 0) {
+            std::string userID = message.substr(10);  // חילוץ המשתמש אחרי "recommend:"
+            
+            // יצירת רשימת ההמלצות
+std::vector<std::string> recommendations = getVideoRecommendations(userID, videoId, getUserToVideos(), getVideoToUsers());
+            
+            // המרה של רשימת הסרטונים למחרוזת מופרדת בפסיקים
+            if (!recommendations.empty()) {
+                std::stringstream recommendationsStream;
+                for (size_t i = 0; i < recommendations.size(); ++i) {
+                    recommendationsStream << recommendations[i];
+                    if (i < recommendations.size() - 1) {
+                        recommendationsStream << ",";
+                    }
+                }
+                std::string recommendationsStr = recommendationsStream.str();
+                
+                // שליחת ההמלצות ללקוח
+                send(clientSocket, recommendationsStr.c_str(), recommendationsStr.size(), 0);
+                std::cout << "Sent recommendations to client: " << recommendationsStr << std::endl;
+            } else {
+                // אם אין המלצות, מחזיר רשימה ריקה
+                std::string emptyResponse = "[]";
+                send(clientSocket, emptyResponse.c_str(), emptyResponse.size(), 0);
+                std::cout << "Sent empty recommendations to client." << std::endl;
+            }
+        } else if (message.find(":") != std::string::npos) {
+            // חלק זה מטפל במיפוי סרטונים לפי משתמשים
+            size_t colonPos = message.find(":");
+            userName = message.substr(0, colonPos);  // חילוץ שם המשתמש
+            videoId = message.substr(colonPos + 1);  // חילוץ מזהה הסרטון
 
-        if (pos1 != std::string::npos && pos2 != std::string::npos && pos3 != std::string::npos) {
-            userName = message.substr(pos1 + 5, pos2 - pos1 - 5);
-            videoId = message.substr(pos3);
+            if (!userName.empty() && !videoId.empty()) {
+                std::cout << "UserID " << userName << " videoID " << videoId << std::endl;
+                
+                // עדכון מסד הנתונים
+                addMapping(userName, videoId);
+                std::cout << "Updated database: User " << userName << " watched video " << videoId << std::endl;
 
-            std::cout << "Extracted userName: " << userName << ", videoId: " << videoId << std::endl;
-
-            addMapping(userName, videoId);  // הוספת המיפוי של משתמש-סרטון
+                // שליחת אישור ללקוח
+                std::string ackMessage = "Update received for user " + userName + " and video " + videoId;
+                send(clientSocket, ackMessage.c_str(), ackMessage.size(), 0);
+            }
         } else {
-            std::cout << "Invalid message format: " << message << std::endl;
+            std::string errorMessage = "Invalid request format.";
+            send(clientSocket, errorMessage.c_str(), errorMessage.size(), 0);
         }
-    } else if (readBytes == 0) {
-        std::cout << "Connection closed by client." << std::endl;
     } else {
         perror("Error receiving data from client");
     }
 
     close(clientSocket);
 }
+
 
 void Server::start(int port) {
     loadFromFile("storage.txt");  // טעינת הנתונים בהפעלת השרת

@@ -4,7 +4,9 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <map>
 
-std::vector<std::string> getVideoRecommendations(const std::string& user, const std::string& videoId);
+// עדכון החתימה של הפונקציה לקבלת מפות של userVideos ו-videoUsers
+std::vector<std::string> getVideoRecommendations(const std::string& user, const std::string& videoId, const std::map<std::string, std::vector<std::string>>& userVideos, const std::map<std::string, std::vector<std::string>>& videoUsers);
 
 #endif // RECOMMENDATIONS_H
