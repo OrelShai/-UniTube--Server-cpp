@@ -2,14 +2,14 @@
 #define RECOMMENDATIONS_H
 
 #include <unordered_map>
-#include <vector>
 #include <string>
+#include <vector>
 
-// Unordered maps to store video views
-extern std::unordered_map<std::string, std::vector<std::string>> userVideos; // Map to store videos by user
-extern std::unordered_map<std::string, std::vector<std::string>> videoUsers; // Map to store users by videos
+// Unordered maps for user and video associations
+extern std::unordered_map<std::string, std::vector<std::string>> userVideosMap;
+extern std::unordered_map<std::string, std::vector<std::string>> videoUsersMap;
 
-// Function to get recommendations based on user and video ID
-std::vector<std::string> getRecommendations(const std::string& user, const std::string& videoId);
+// Recommendation function that takes both user and video ID
+std::vector<std::string> getVideoRecommendations(const std::string& user, const std::string& videoId);
 
 #endif // RECOMMENDATIONS_H
