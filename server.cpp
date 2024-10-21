@@ -73,20 +73,6 @@ bool loadFromFile(const std::string& filename) {
             std::cout << std::endl;
         }
     }
-
-    // טעינת frequencyList
-    while (getline(file, line) && !line.empty()) {
-        std::stringstream ss(line);
-        std::string videoID;
-        int frequency;
-        ss >> videoID >> frequency;
-
-        if (!videoID.empty()) {
-            frequencyList[videoID] = frequency;
-            std::cout << "Loaded video: " << videoID << " with frequency: " << frequency << std::endl;
-        }
-    }
-
     file.close();
     return true;
 }
@@ -124,12 +110,6 @@ bool saveToFile(const std::string& filename) {
 
     // הפרדת קטעים
     file << "\n";
-
-    // שמירת frequencyList
-    for (const auto& pair : frequencyList) {
-        file << pair.first << " " << pair.second << "\n";
-    }
-
     file.close();
     return true;
 }
