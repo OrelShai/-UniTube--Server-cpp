@@ -167,40 +167,56 @@ void handleClient(int clientSocket) {
 
         // אם ההודעה מכילה "recommend" - מחזירה רשימת סרטונים מומלצים
         if (message.find("recommend:") == 0) {
-            std::string userID = message.substr(10);  // חילוץ המשתמש אחרי "recommend:"
-            
-            // יצירת רשימת ההמלצות
-std::vector<std::string> recommendations = getVideoRecommendations(userID, videoId, getUserToVideos(), getVideoToUsers());
-            
-            // המרה של רשימת הסרטונים למחרוזת מופרדת בפסיקים
-            if (!recommendations.empty()) {
-                std::stringstream recommendationsStream;
-                for (size_t i = 0; i < recommendations.size(); ++i) {
-                    recommendationsStream << recommendations[i];
-                    if (i < recommendations.size() - 1) {
-                        recommendationsStream << ",";
+            size_t firstColon = message.find(":");
+            size_t secondColon = message.find(":", firstColon + 1);
+
+            std::string userID = message.substr(firstColon + 1, secondColon - firstColon - 1);
+            std::string videoID = message.substr(secondColon + 1);
+
+            // בדיקה אם המשתמש והסרטון קיימים במפות
+            if (userVideos.find(userID) != userVideos.end() && videoUsers.find(videoID) != videoUsers.end()) {
+                // יצירת רשימת ההמלצות
+                std::vector<std::string> recommendations = getVideoRecommendations(userID, videoID, getUserToVideos(), getVideoToUsers());
+
+                // המרה של רשימת הסרטונים למחרוזת מופרדת בפסיקים
+                if (!recommendations.empty()) {
+                    std::stringstream recommendationsStream;
+                    for (size_t i = 0; i < recommendations.size(); ++i) {
+                        recommendationsStream << recommendations[i];
+                        if (i < recommendations.size() - 1) {
+                            recommendationsStream << ",";
+                        }
                     }
+                    std::string recommendationsStr = recommendationsStream.str();
+
+                    // שליחת ההמלצות ללקוח
+                    send(clientSocket, recommendationsStr.c_str(), recommendationsStr.size(), 0);
+                    std::cout << "Sent recommendations to client: " << recommendationsStr << std::endl;
+                } else {
+                    // אם אין המלצות, מחזיר רשימה ריקה
+                    std::string emptyResponse = "[]";
+                    send(clientSocket, emptyResponse.c_str(), emptyResponse.size(), 0);
+                    std::cout << "Sent empty recommendations to client." << std::endl;
                 }
-                std::string recommendationsStr = recommendationsStream.str();
-                
-                // שליחת ההמלצות ללקוח
-                send(clientSocket, recommendationsStr.c_str(), recommendationsStr.size(), 0);
-                std::cout << "Sent recommendations to client: " << recommendationsStr << std::endl;
             } else {
-                // אם אין המלצות, מחזיר רשימה ריקה
-                std::string emptyResponse = "[]";
-                send(clientSocket, emptyResponse.c_str(), emptyResponse.size(), 0);
-                std::cout << "Sent empty recommendations to client." << std::endl;
+                std::string errorMessage = "User or Video not found.";
+                send(clientSocket, errorMessage.c_str(), errorMessage.size(), 0);
+                std::cout << "Error: User or Video not found in database." << std::endl;
             }
-        } else if (message.find(":") != std::string::npos) {
-            // חלק זה מטפל במיפוי סרטונים לפי משתמשים
-            size_t colonPos = message.find(":");
-            userName = message.substr(0, colonPos);  // חילוץ שם המשתמש
-            videoId = message.substr(colonPos + 1);  // חילוץ מזהה הסרטון
+
+        } 
+        // אם ההודעה מכילה "User {username} watched Video {videoId}" - עדכון מסד הנתונים
+        else if (message.find("User ") == 0 && message.find(" watched Video ") != std::string::npos) {
+            size_t userStart = message.find("User ") + 5;
+            size_t watchedPos = message.find(" watched Video ");
+            size_t videoStart = message.find("Video ") + 6;
+
+            userName = message.substr(userStart, watchedPos - userStart);
+            videoId = message.substr(videoStart);
 
             if (!userName.empty() && !videoId.empty()) {
                 std::cout << "UserID " << userName << " videoID " << videoId << std::endl;
-                
+
                 // עדכון מסד הנתונים
                 addMapping(userName, videoId);
                 std::cout << "Updated database: User " << userName << " watched video " << videoId << std::endl;
@@ -219,7 +235,6 @@ std::vector<std::string> recommendations = getVideoRecommendations(userID, video
 
     close(clientSocket);
 }
-
 
 void Server::start(int port) {
     loadFromFile("storage.txt");  // טעינת הנתונים בהפעלת השרת

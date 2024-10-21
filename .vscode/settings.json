@@ -53,6 +53,8 @@
         "thread": "cpp",
         "typeinfo": "cpp",
         "fstream": "cpp",
-        "mutex": "cpp"
+        "mutex": "cpp",
+        "condition_variable": "cpp",
+        "map": "cpp"
     }
 }
