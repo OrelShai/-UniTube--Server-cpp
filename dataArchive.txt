@@ -1,0 +1,7 @@
+Noa Kirel:10,8,5,14
+
+10:Noa Kirel
+14:Noa Kirel
+5:Noa Kirel
+8:Noa Kirel
+

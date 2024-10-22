@@ -6,11 +6,12 @@
 #include <string>
 #include <map>
 #include <mutex>
+extern int globalPort;
 
 // Maps for associating videos with users and users with videos
 extern std::map<std::string, std::vector<std::string>> userVideos;
 extern std::map<std::string, std::vector<std::string>> videoUsers;
-extern std::mutex dbMutex;  // Mutex for thread-safe access to the database
+extern std::mutex databaseMutex;  // Mutex for thread-safe access to the database
 
 class Server {
 public:

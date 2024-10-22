@@ -17,7 +17,7 @@
 // Maps for managing users and videos
 std::map<std::string, std::vector<std::string>> userVideos;  // Map of videos by users
 std::map<std::string, std::vector<std::string>> videoUsers;  // Map of users by videos
-std::mutex dbMutex;  // Mutex for locking during concurrent access to the database
+std::mutex databaseMutex;  // Mutex for locking during concurrent access to the database
 
 // Function to load data from a file
 bool loadFromFile(const std::string& filename) {
@@ -119,7 +119,7 @@ bool saveToFile(const std::string& filename) {
 
 // Function to add a user-to-video mapping
 void addMapping(const std::string& userID, const std::string& videoID) {
-    std::lock_guard<std::mutex> lock(dbMutex);  // Lock the mutex to prevent concurrency issues
+    std::lock_guard<std::mutex> lock(databaseMutex);  // Lock the mutex to prevent concurrency issues
 
     std::string trimmedUserID = trim(userID);   // Trim any whitespace from the user ID
     std::string trimmedVideoID = trim(videoID);  // Trim any whitespace from the video ID
@@ -153,10 +153,10 @@ void addMapping(const std::string& userID, const std::string& videoID) {
     }
 
     // Save the updated data to the file
-    if (!saveToFile("storage.txt")) {
+    if (!saveToFile("dataArchive.txt")) {
         std::cerr << "Error saving data to file after update." << std::endl;
     } else {
-        std::cout << "Data successfully saved to storage.txt" << std::endl;
+        std::cout << "Data successfully saved to dataArchive.txt" << std::endl;
     }
 }
 
@@ -332,7 +332,7 @@ void handleClient(int clientSocket) {
 }
 
 void Server::start(int port) {
-    loadFromFile("storage.txt");  // Load data from the file when the server starts
+    loadFromFile("dataArchive.txt");  // Load data from the file when the server starts
 
     int server_fd;
     struct sockaddr_in address;  // Define a struct for the server address
