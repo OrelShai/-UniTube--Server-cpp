@@ -1,12 +1,10 @@
-GET /recommendations?username=Noa Kirel&videoId=3 HTTP/1.1
-Host: 192.168.161.129
-Connection: close
+Noa:irel:9
+Noa Kirel:7,2,1
+Noa:irel:10:
 
-
-
- 192.168.161.129
-Connection: close
-
-:GET /recommendations?username=Noa Kirel&videoId=3 HTTP/1.1
-Host
+1:Noa Kirel
+10:Noa:irel:
+2:Noa Kirel
+7:Noa Kirel
+9:Noa:irel
 

@@ -7,7 +7,6 @@
 std::unordered_map<std::string, std::vector<std::string>> userVideosMap;
 std::unordered_map<std::string, std::vector<std::string>> videoUsersMap;
 
-// פונקציית ההמלצות שתקבל את המפות של userVideos ו-videoUsers
 std::vector<std::string> getVideoRecommendations(const std::string& user, const std::string& videoId, const std::map<std::string, std::vector<std::string>>& userVideos, const std::map<std::string, std::vector<std::string>>& videoUsers) {
     std::vector<std::string> recommendations;
 
@@ -25,6 +24,8 @@ std::vector<std::string> getVideoRecommendations(const std::string& user, const 
                 }
             }
         }
+    } else {
+        std::cout << "Video ID not found in videoUsers map." << std::endl;
     }
 
     return recommendations; // החזרת רשימת הסרטונים המומלצים
