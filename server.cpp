@@ -121,17 +121,21 @@ bool saveToFile(const std::string& filename) {
 void addMapping(const std::string& userID, const std::string& videoID) {
     std::lock_guard<std::mutex> lock(dbMutex);  // נעילה למניעת בעיות במקביל
 
-std::string trimmedUserID = trim(userID);  // חיתוך רווחים
+    std::string trimmedUserID = trim(userID);  // חיתוך רווחים
     std::string trimmedVideoID = trim(videoID);  // חיתוך רווחים
-    
+
+    // הדפסה של מה שמנסים להוסיף
+    std::cout << "Adding to userVideos map: UserID='" << trimmedUserID << "', VideoID='" << trimmedVideoID << "'" << std::endl;
+    std::cout << "Adding to videoUsers map: VideoID='" << trimmedVideoID << "', UserID='" << trimmedUserID << "'" << std::endl;
+
     // הוספת הסרטון למשתמש אם אינו קיים כבר
-    if (std::find(userVideos[userID].begin(), userVideos[userID].end(), videoID) == userVideos[userID].end()) {
-        userVideos[userID].push_back(videoID);
+    if (std::find(userVideos[trimmedUserID].begin(), userVideos[trimmedUserID].end(), trimmedVideoID) == userVideos[trimmedUserID].end()) {
+        userVideos[trimmedUserID].push_back(trimmedVideoID);
     }
 
     // הוספת המשתמש לסרטון אם אינו קיים כבר
-    if (std::find(videoUsers[videoID].begin(), videoUsers[videoID].end(), userID) == videoUsers[videoID].end()) {
-        videoUsers[videoID].push_back(userID);
+    if (std::find(videoUsers[trimmedVideoID].begin(), videoUsers[trimmedVideoID].end(), trimmedUserID) == videoUsers[trimmedVideoID].end()) {
+        videoUsers[trimmedVideoID].push_back(trimmedUserID);
     }
 
     // שמירת הנתונים המעודכנים לקובץ
@@ -253,12 +257,16 @@ if (userVideos.find(trimmedUserID) != userVideos.end() && videoUsers.find(trimme
                 // המרה של רשימת הסרטונים למחרוזת מופרדת בפסיקים
                 if (!recommendations.empty()) {
                     std::stringstream recommendationsStream;
+                        recommendationsStream << "[";  // פתיחת סוגריים מרובעים
+
                     for (size_t i = 0; i < recommendations.size(); ++i) {
                         recommendationsStream << recommendations[i];
                         if (i < recommendations.size() - 1) {
                             recommendationsStream << ",";
                         }
                     }
+                        recommendationsStream << "]";  // סגירת סוגריים מרובעים
+
                     std::string recommendationsStr = recommendationsStream.str();
 
                     // שליחת ההמלצות ללקוח
