@@ -1,11 +1,13 @@
-Hila El peleg:6
-Noa Kirel:5,8,9,10,6,4,2,3
+Hila El peleg:6,5,2,4,20
+Noa Kirel:5,8,9,10,6,4,2,3,11
 
 10:Noa Kirel
-2:Noa Kirel
+11:Noa Kirel
+2:Noa Kirel,Hila El peleg
+20:Hila El peleg
 3:Noa Kirel
-4:Noa Kirel
-5:Noa Kirel
+4:Noa Kirel,Hila El peleg
+5:Noa Kirel,Hila El peleg
 6:Noa Kirel,Hila El peleg
 8:Noa Kirel
 9:Noa Kirel

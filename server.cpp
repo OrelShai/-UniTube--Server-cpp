@@ -124,25 +124,42 @@ void addMapping(const std::string& userID, const std::string& videoID) {
     std::string trimmedUserID = trim(userID);  // חיתוך רווחים
     std::string trimmedVideoID = trim(videoID);  // חיתוך רווחים
 
-    // הדפסה של מה שמנסים להוסיף
-    std::cout << "Adding to userVideos map: UserID='" << trimmedUserID << "', VideoID='" << trimmedVideoID << "'" << std::endl;
-    std::cout << "Adding to videoUsers map: VideoID='" << trimmedVideoID << "', UserID='" << trimmedUserID << "'" << std::endl;
-
-    // הוספת הסרטון למשתמש אם אינו קיים כבר
-    if (std::find(userVideos[trimmedUserID].begin(), userVideos[trimmedUserID].end(), trimmedVideoID) == userVideos[trimmedUserID].end()) {
-        userVideos[trimmedUserID].push_back(trimmedVideoID);
+    // בדיקה אם המשתמש קיים במפה
+    if (userVideos.find(trimmedUserID) == userVideos.end()) {
+        std::cout << "User not found, creating new entry for user: " << trimmedUserID << std::endl;
+        userVideos[trimmedUserID] = {};
     }
 
-    // הוספת המשתמש לסרטון אם אינו קיים כבר
+    // הוספת הסרטון למשתמש
+    if (std::find(userVideos[trimmedUserID].begin(), userVideos[trimmedUserID].end(), trimmedVideoID) == userVideos[trimmedUserID].end()) {
+        std::cout << "Adding video " << trimmedVideoID << " to user " << trimmedUserID << std::endl;
+        userVideos[trimmedUserID].push_back(trimmedVideoID);
+    } else {
+        std::cout << "Video " << trimmedVideoID << " already exists for user " << trimmedUserID << std::endl;
+    }
+
+    // בדיקה אם הסרטון קיים במפה
+    if (videoUsers.find(trimmedVideoID) == videoUsers.end()) {
+        std::cout << "Video not found, creating new entry for video: " << trimmedVideoID << std::endl;
+        videoUsers[trimmedVideoID] = {};
+    }
+
+    // הוספת המשתמש לסרטון
     if (std::find(videoUsers[trimmedVideoID].begin(), videoUsers[trimmedVideoID].end(), trimmedUserID) == videoUsers[trimmedVideoID].end()) {
+        std::cout << "Adding user " << trimmedUserID << " to video " << trimmedVideoID << std::endl;
         videoUsers[trimmedVideoID].push_back(trimmedUserID);
+    } else {
+        std::cout << "User " << trimmedUserID << " already exists for video " << trimmedVideoID << std::endl;
     }
 
     // שמירת הנתונים המעודכנים לקובץ
     if (!saveToFile("storage.txt")) {
         std::cerr << "Error saving data to file after update." << std::endl;
+    } else {
+        std::cout << "Data successfully saved to storage.txt" << std::endl;
     }
 }
+
 
 // פונקציה להחזרת רשימת הסרטונים שנצפו על ידי משתמש
 std::vector<std::string> getVideosForUser(const std::string& userID) {
@@ -213,12 +230,33 @@ void handleClient(int clientSocket) {
         std::string userName;
         std::string videoId;
 
+        // אם ההודעה מכילה "User:{username},watchedVideo:{videoId}" - עדכון מסד הנתונים
+        if (message.find("User:") == 0 && message.find(",watchedVideo:") != std::string::npos) {
+            size_t userStart = message.find("User:") + 5;
+            size_t watchedPos = message.find(",watchedVideo:");
+            size_t videoStart = watchedPos + 14;
+
+            userName = message.substr(userStart, watchedPos - userStart);
+            videoId = message.substr(videoStart);
+
+            if (!userName.empty() && !videoId.empty()) {
+                std::cout << "UserID " << userName << " videoID " << videoId << std::endl;
+
+                // עדכון מסד הנתונים
+                addMapping(userName, videoId);
+                std::cout << "Updated database: User " << userName << " watched video " << videoId << std::endl;
+
+                // שליחת אישור ללקוח
+                std::string ackMessage = "Update received for user " + userName + " and video " + videoId;
+                send(clientSocket, ackMessage.c_str(), ackMessage.size(), 0);
+            }
+
         // אם ההודעה מכילה "recommend" - מחזירה רשימת סרטונים מומלצים
-        if (message.find("recommend:") == 0) {
+        } else if (message.find("recommend:") == 0) {
             size_t firstColon = message.find(":");
             size_t secondColon = message.find(":", firstColon + 1);
 
- std::string userID = message.substr(firstColon + 1, secondColon - firstColon - 1);
+            std::string userID = message.substr(firstColon + 1, secondColon - firstColon - 1);
             std::string videoID = message.substr(secondColon + 1);
 
             // הדפסת המשתנים לפני חיתוך הרווחים
@@ -233,11 +271,11 @@ void handleClient(int clientSocket) {
             std::cout << "UserID after trim: '" << trimmedUserID << "'" << std::endl;
             std::cout << "VideoID after trim: '" << trimmedVideoID << "'" << std::endl;
 
-// הדפסת המפות לפני השוואה
-printUserVideos();
-printVideoUsers();
+            // הדפסת המפות לפני השוואה
+            printUserVideos();
+            printVideoUsers();
 
-       // הדפסת מה שקיים במפות
+            // הדפסת מה שקיים במפות
             std::cout << "Checking if user exists: '" << trimmedUserID << "'" << std::endl;
             for (const auto& pair : userVideos) {
                 std::cout << "Existing user: '" << pair.first << "'" << std::endl;
@@ -248,16 +286,15 @@ printVideoUsers();
                 std::cout << "Existing video: '" << pair.first << "'" << std::endl;
             }
 
-
             // בדיקה אם המשתמש והסרטון קיימים במפות
-if (userVideos.find(trimmedUserID) != userVideos.end() && videoUsers.find(trimmedVideoID) != videoUsers.end()) {
+            if (userVideos.find(trimmedUserID) != userVideos.end() && videoUsers.find(trimmedVideoID) != videoUsers.end()) {
                 // יצירת רשימת ההמלצות
                 std::vector<std::string> recommendations = getVideoRecommendations(userID, videoID, getUserToVideos(), getVideoToUsers());
 
                 // המרה של רשימת הסרטונים למחרוזת מופרדת בפסיקים
                 if (!recommendations.empty()) {
                     std::stringstream recommendationsStream;
-                        recommendationsStream << "[";  // פתיחת סוגריים מרובעים
+                    recommendationsStream << "[";  // פתיחת סוגריים מרובעים
 
                     for (size_t i = 0; i < recommendations.size(); ++i) {
                         recommendationsStream << recommendations[i];
@@ -265,7 +302,7 @@ if (userVideos.find(trimmedUserID) != userVideos.end() && videoUsers.find(trimme
                             recommendationsStream << ",";
                         }
                     }
-                        recommendationsStream << "]";  // סגירת סוגריים מרובעים
+                    recommendationsStream << "]";  // סגירת סוגריים מרובעים
 
                     std::string recommendationsStr = recommendationsStream.str();
 
@@ -284,28 +321,6 @@ if (userVideos.find(trimmedUserID) != userVideos.end() && videoUsers.find(trimme
                 std::cout << "Error: User or Video not found in database." << std::endl;
             }
 
-        } 
-  // אם ההודעה מכילה "User:{username},watchedVideo:{videoId}" - עדכון מסד הנתונים
-        else if (message.find("User:") == 0 && message.find(",watchedVideo:") != std::string::npos) {
-            size_t userStart = message.find("User:") + 5;
-            size_t watchedPos = message.find(",watchedVideo:");
-            size_t videoStart = watchedPos + 14;
-
-            userName = message.substr(userStart, watchedPos - userStart);
-            videoId = message.substr(videoStart);
-
-   
-            if (!userName.empty() && !videoId.empty()) {
-                std::cout << "UserID " << userName << " videoID " << videoId << std::endl;
-
-                // עדכון מסד הנתונים
-                addMapping(userName, videoId);
-                std::cout << "Updated database: User " << userName << " watched video " << videoId << std::endl;
-
-                // שליחת אישור ללקוח
-                std::string ackMessage = "Update received for user " + userName + " and video " + videoId;
-                send(clientSocket, ackMessage.c_str(), ackMessage.size(), 0);
-            }
         } else {
             std::string errorMessage = "Invalid request format.";
             send(clientSocket, errorMessage.c_str(), errorMessage.size(), 0);
@@ -316,6 +331,7 @@ if (userVideos.find(trimmedUserID) != userVideos.end() && videoUsers.find(trimme
 
     close(clientSocket);
 }
+
 
 void Server::start(int port) {
     loadFromFile("storage.txt");  // טעינת הנתונים בהפעלת השרת
