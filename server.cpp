@@ -33,8 +33,7 @@ bool loadFromFile(const std::string& filename) {
     while (getline(file, line) && !line.empty()) {
         std::stringstream ss(line);
         std::string userID;
-        char colon;
-        ss >> userID >> colon;
+        getline(ss, userID, ':');
 
         std::vector<std::string> videos;
         std::string videoID;
@@ -56,8 +55,7 @@ bool loadFromFile(const std::string& filename) {
     while (getline(file, line) && !line.empty()) {
         std::stringstream ss(line);
         std::string videoID;
-        char colon;
-        ss >> videoID >> colon;
+        getline(ss, videoID, ':'); 
 
         std::vector<std::string> users;
         std::string userID;
