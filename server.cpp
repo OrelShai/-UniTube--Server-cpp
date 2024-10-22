@@ -14,12 +14,12 @@
 #include "recommendations.h"
 
 
-// מפות לניהול המשתמשים והסרטונים
-std::map<std::string, std::vector<std::string>> userVideos;  // מפה של סרטונים לפי משתמשים
-std::map<std::string, std::vector<std::string>> videoUsers;  // מפה של משתמשים לפי סרטונים
-std::mutex dbMutex;  // נעילה עבור גישה למסד נתונים במקביל
+// Maps for managing users and videos
+std::map<std::string, std::vector<std::string>> userVideos;  // Map of videos by users
+std::map<std::string, std::vector<std::string>> videoUsers;  // Map of users by videos
+std::mutex dbMutex;  // Mutex for locking during concurrent access to the database
 
-// פונקציה לטעינת הנתונים מקובץ
+// Function to load data from a file
 bool loadFromFile(const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -29,21 +29,21 @@ bool loadFromFile(const std::string& filename) {
 
     std::string line;
 
-    // טעינת userToVideos
-    while (getline(file, line) && !line.empty()) {
+    // Load user-to-videos mapping
+    while (getline(file, line) && !line.empty()) { // Read lines until an empty line is encountered
         std::stringstream ss(line);
         std::string userID;
-        getline(ss, userID, ':');
+        getline(ss, userID, ':'); // Extract the user ID from the line (before the colon)
 
         userID = trim(userID);
 
         std::vector<std::string> videos;
         std::string videoID;
-        while (getline(ss, videoID, ',')) {  // קריאת מזהי הסרטונים מופרדים בפסיקים
+        while (getline(ss, videoID, ',')) { // Read video IDs separated by commas
             videos.push_back(trim(videoID));
         }
 
-        if (!userID.empty()) {
+        if (!userID.empty()) { // If the user ID is not empty, add the user and their videos to the map
             userVideos[userID] = videos;
             std::cout << "Loaded user: " << userID << " with videos: ";
             for (const auto& vid : videos) {
@@ -53,21 +53,21 @@ bool loadFromFile(const std::string& filename) {
         }
     }
 
-    // טעינת videoToUsers
+    // Load video-to-users mapping
     while (getline(file, line) && !line.empty()) {
         std::stringstream ss(line);
         std::string videoID;
-        getline(ss, videoID, ':'); 
+        getline(ss, videoID, ':');  // Extract the video ID from the line (before the colon)
         
         videoID = trim(videoID);
 
         std::vector<std::string> users;
         std::string userID;
-        while (getline(ss, userID, ',')) {  // קריאת מזהי המשתמשים מופרדים בפסיקים
+        while (getline(ss, userID, ',')) {  // Read user IDs separated by commas
             users.push_back(trim(userID));
         }
 
-        if (!videoID.empty()) {
+        if (!videoID.empty()) { // If the video ID is not empty, add the video and its users to the map
             videoUsers[videoID] = users;
             std::cout << "Loaded video: " << videoID << " with users: ";
             for (const auto& user : users) {
@@ -80,57 +80,57 @@ bool loadFromFile(const std::string& filename) {
     return true;
 }
 
-// פונקציה לשמירת הנתונים לקובץ
+// Function to save data to a file
 bool saveToFile(const std::string& filename) {
-    std::ofstream file(filename);
+    std::ofstream file(filename);  // Open the file for writing
     if (!file.is_open()) {
         std::cerr << "Error opening file for writing: " << filename << std::endl;
         return false;
     }
 
-    // שמירת userToVideos
+    // Save user-to-videos mapping
     for (const auto& pair : userVideos) {
         file << pair.first << ":";
         for (size_t i = 0; i < pair.second.size(); ++i) {
             file << pair.second[i];
-            if (i < pair.second.size() - 1) file << ",";  // הפרדה בפסיקים בין מזהי סרטונים
+            if (i < pair.second.size() - 1) file << ","; // Separate video IDs with commas
         }
         file << "\n";
     }
 
-    // הפרדת קטעים
+    // Separate sections with a blank line
     file << "\n";
 
-    // שמירת videoToUsers
+    // Save video-to-users mapping
     for (const auto& pair : videoUsers) {
-        file << pair.first << ":";
+        file << pair.first << ":"; // Write the video ID followed by a colon
         for (size_t i = 0; i < pair.second.size(); ++i) {
             file << pair.second[i];
-            if (i < pair.second.size() - 1) file << ",";  // הפרדה בפסיקים בין מזהי משתמשים
+            if (i < pair.second.size() - 1) file << ","; // Separate user IDs with commas
         }
-        file << "\n";
+        file << "\n";  // End the line after writing all user IDs for the video
     }
 
-    // הפרדת קטעים
+    // Separate sections with a blank line
     file << "\n";
     file.close();
     return true;
 }
 
-// פונקציה להוספת מיפוי משתמש-סרטון
+// Function to add a user-to-video mapping
 void addMapping(const std::string& userID, const std::string& videoID) {
-    std::lock_guard<std::mutex> lock(dbMutex);  // נעילה למניעת בעיות במקביל
+    std::lock_guard<std::mutex> lock(dbMutex);  // Lock the mutex to prevent concurrency issues
 
-    std::string trimmedUserID = trim(userID);  // חיתוך רווחים
-    std::string trimmedVideoID = trim(videoID);  // חיתוך רווחים
+    std::string trimmedUserID = trim(userID);   // Trim any whitespace from the user ID
+    std::string trimmedVideoID = trim(videoID);  // Trim any whitespace from the video ID
 
-    // בדיקה אם המשתמש קיים במפה
+    // Check if the user exists in the map
     if (userVideos.find(trimmedUserID) == userVideos.end()) {
         std::cout << "User not found, creating new entry for user: " << trimmedUserID << std::endl;
         userVideos[trimmedUserID] = {};
     }
 
-    // הוספת הסרטון למשתמש
+    // Add the video to the user's list if it's not already there
     if (std::find(userVideos[trimmedUserID].begin(), userVideos[trimmedUserID].end(), trimmedVideoID) == userVideos[trimmedUserID].end()) {
         std::cout << "Adding video " << trimmedVideoID << " to user " << trimmedUserID << std::endl;
         userVideos[trimmedUserID].push_back(trimmedVideoID);
@@ -138,13 +138,13 @@ void addMapping(const std::string& userID, const std::string& videoID) {
         std::cout << "Video " << trimmedVideoID << " already exists for user " << trimmedUserID << std::endl;
     }
 
-    // בדיקה אם הסרטון קיים במפה
+    // Check if the video exists in the map
     if (videoUsers.find(trimmedVideoID) == videoUsers.end()) {
         std::cout << "Video not found, creating new entry for video: " << trimmedVideoID << std::endl;
         videoUsers[trimmedVideoID] = {};
     }
 
-    // הוספת המשתמש לסרטון
+    // Add the user to the video's list if they're not already there
     if (std::find(videoUsers[trimmedVideoID].begin(), videoUsers[trimmedVideoID].end(), trimmedUserID) == videoUsers[trimmedVideoID].end()) {
         std::cout << "Adding user " << trimmedUserID << " to video " << trimmedVideoID << std::endl;
         videoUsers[trimmedVideoID].push_back(trimmedUserID);
@@ -152,7 +152,7 @@ void addMapping(const std::string& userID, const std::string& videoID) {
         std::cout << "User " << trimmedUserID << " already exists for video " << trimmedVideoID << std::endl;
     }
 
-    // שמירת הנתונים המעודכנים לקובץ
+    // Save the updated data to the file
     if (!saveToFile("storage.txt")) {
         std::cerr << "Error saving data to file after update." << std::endl;
     } else {
@@ -160,27 +160,26 @@ void addMapping(const std::string& userID, const std::string& videoID) {
     }
 }
 
-
-// פונקציה להחזרת רשימת הסרטונים שנצפו על ידי משתמש
+// Function to return the list of videos watched by a user
 std::vector<std::string> getVideosForUser(const std::string& userID) {
     if (userVideos.find(userID) != userVideos.end()) {
         return userVideos[userID];
     } else {
-        return std::vector<std::string>();  // החזרת וקטור ריק אם המשתמש לא נמצא
+        return std::vector<std::string>();  // Return an empty vector if the user is not found
     }
 }
 
-// פונקציה להחזרת מפת משתמשים לפי סרטונים
+// Function to return the map of videos to their users
 const std::map<std::string, std::vector<std::string>>& getUserToVideos() {
     return userVideos;
 }
 
-// פונקציה להחזרת מפת סרטונים לפי משתמשים
+// Function to return the map of videos to their users
 const std::map<std::string, std::vector<std::string>>& getVideoToUsers() {
     return videoUsers;
 }
 
-// פונקציה להדפסת מפת userVideos
+// Function to print the user-to-videos map
 void printUserVideos() {
     std::cout << "User Videos Map:" << std::endl;
     for (const auto& pair : userVideos) {
@@ -192,7 +191,7 @@ void printUserVideos() {
     }
 }
 
-// פונקציה להדפסת מפת videoUsers
+// Function to print the video-to-users map
 void printVideoUsers() {
     std::cout << "Video Users Map:" << std::endl;
     for (const auto& pair : videoUsers) {
@@ -204,7 +203,7 @@ void printVideoUsers() {
     }
 }
 
-// פונקציה להסרת רווחים מתחילת וסוף המחרוזת
+// Function to remove whitespace from the beginning and end of a string
 std::string trim(const std::string &s) {
     auto start = s.begin();
     while (start != s.end() && std::isspace(*start)) {
@@ -216,21 +215,21 @@ std::string trim(const std::string &s) {
         end--;
     } while (std::distance(start, end) > 0 && std::isspace(*end));
 
-    return std::string(start, end + 1);
+    return std::string(start, end + 1);  // Return the trimmed string (from start to end)
 }
 
 void handleClient(int clientSocket) {
     char buffer[4096] = {0};
-    int readBytes = recv(clientSocket, buffer, 4096, 0);
+    int readBytes = recv(clientSocket, buffer, 4096, 0);  // Receive data from the client
 
     if (readBytes > 0) {
-        buffer[readBytes] = '\0';  // סיום מחרוזת
+        buffer[readBytes] = '\0';  // Null-terminate the string
         std::string message(buffer);
 
         std::string userName;
         std::string videoId;
 
-        // אם ההודעה מכילה "User:{username},watchedVideo:{videoId}" - עדכון מסד הנתונים
+        // If the message contains "User:{username},watchedVideo:{videoId}" - update the database
         if (message.find("User:") == 0 && message.find(",watchedVideo:") != std::string::npos) {
             size_t userStart = message.find("User:") + 5;
             size_t watchedPos = message.find(",watchedVideo:");
@@ -242,16 +241,16 @@ void handleClient(int clientSocket) {
             if (!userName.empty() && !videoId.empty()) {
                 std::cout << "UserID " << userName << " videoID " << videoId << std::endl;
 
-                // עדכון מסד הנתונים
+                // Update the database with the user and video mapping
                 addMapping(userName, videoId);
                 std::cout << "Updated database: User " << userName << " watched video " << videoId << std::endl;
 
-                // שליחת אישור ללקוח
+                // Send acknowledgment to the client
                 std::string ackMessage = "Update received for user " + userName + " and video " + videoId;
                 send(clientSocket, ackMessage.c_str(), ackMessage.size(), 0);
             }
 
-        // אם ההודעה מכילה "recommend" - מחזירה רשימת סרטונים מומלצים
+        // If the message contains "recommend" - return a list of recommended videos
         } else if (message.find("recommend:") == 0) {
             size_t firstColon = message.find(":");
             size_t secondColon = message.find(":", firstColon + 1);
@@ -259,23 +258,23 @@ void handleClient(int clientSocket) {
             std::string userID = message.substr(firstColon + 1, secondColon - firstColon - 1);
             std::string videoID = message.substr(secondColon + 1);
 
-            // הדפסת המשתנים לפני חיתוך הרווחים
+            // Print the variables before trimming whitespace
             std::cout << "UserID extracted (before trim): '" << userID << "'" << std::endl;
             std::cout << "VideoID extracted (before trim): '" << videoID << "'" << std::endl;
 
-            // חיתוך רווחים מיותרים
+            // Trim unnecessary whitespace
             std::string trimmedUserID = trim(userID);
             std::string trimmedVideoID = trim(videoID);
 
-            // הדפסה לאחר חיתוך הרווחים
+            // Print after trimming whitespace
             std::cout << "UserID after trim: '" << trimmedUserID << "'" << std::endl;
             std::cout << "VideoID after trim: '" << trimmedVideoID << "'" << std::endl;
 
-            // הדפסת המפות לפני השוואה
+            // Print the maps before comparison
             printUserVideos();
             printVideoUsers();
 
-            // הדפסת מה שקיים במפות
+            // Check if user and video exist in the maps
             std::cout << "Checking if user exists: '" << trimmedUserID << "'" << std::endl;
             for (const auto& pair : userVideos) {
                 std::cout << "Existing user: '" << pair.first << "'" << std::endl;
@@ -286,12 +285,12 @@ void handleClient(int clientSocket) {
                 std::cout << "Existing video: '" << pair.first << "'" << std::endl;
             }
 
-            // בדיקה אם המשתמש והסרטון קיימים במפות
+            // Check if the user and video exist in the maps
             if (userVideos.find(trimmedUserID) != userVideos.end() && videoUsers.find(trimmedVideoID) != videoUsers.end()) {
-                // יצירת רשימת ההמלצות
+                // Create a list of recommendations
                 std::vector<std::string> recommendations = getVideoRecommendations(userID, videoID, getUserToVideos(), getVideoToUsers());
 
-                // המרה של רשימת הסרטונים למחרוזת מופרדת בפסיקים
+                // Convert the list of recommended videos to a comma-separated string
                 if (!recommendations.empty()) {
                     std::stringstream recommendationsStream;
                     recommendationsStream << "[";  // פתיחת סוגריים מרובעים
@@ -302,15 +301,15 @@ void handleClient(int clientSocket) {
                             recommendationsStream << ",";
                         }
                     }
-                    recommendationsStream << "]";  // סגירת סוגריים מרובעים
+                    recommendationsStream << "]";   // Open square brackets
 
                     std::string recommendationsStr = recommendationsStream.str();
 
-                    // שליחת ההמלצות ללקוח
+                    // Send the recommendations to the client
                     send(clientSocket, recommendationsStr.c_str(), recommendationsStr.size(), 0);
                     std::cout << "Sent recommendations to client: " << recommendationsStr << std::endl;
                 } else {
-                    // אם אין המלצות, מחזיר רשימה ריקה
+                    // If there are no recommendations, send an empty list
                     std::string emptyResponse = "[]";
                     send(clientSocket, emptyResponse.c_str(), emptyResponse.size(), 0);
                     std::cout << "Sent empty recommendations to client." << std::endl;
@@ -332,12 +331,11 @@ void handleClient(int clientSocket) {
     close(clientSocket);
 }
 
-
 void Server::start(int port) {
-    loadFromFile("storage.txt");  // טעינת הנתונים בהפעלת השרת
+    loadFromFile("storage.txt");  // Load data from the file when the server starts
 
     int server_fd;
-    struct sockaddr_in address;  // תיקון: הוספת הגדרה נכונה
+    struct sockaddr_in address;  // Define a struct for the server address
     int opt = 1;
     int addrlen = sizeof(address);
 

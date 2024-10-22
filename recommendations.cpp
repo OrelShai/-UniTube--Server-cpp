@@ -10,16 +10,16 @@ std::unordered_map<std::string, std::vector<std::string>> videoUsersMap;
 std::vector<std::string> getVideoRecommendations(const std::string& user, const std::string& videoId, const std::map<std::string, std::vector<std::string>>& userVideos, const std::map<std::string, std::vector<std::string>>& videoUsers) {
     std::vector<std::string> recommendations;
 
-    // בדיקה אם מזהה הווידאו קיים במפת videoUsers
+    // Check if the video ID exists in the videoUsers map
     if (videoUsers.find(videoId) != videoUsers.end()) {
-        // לולאה על המשתמשים שצפו בסרטון הזה
+        // Loop through the users who watched this video
         for (const auto& otherUser : videoUsers.at(videoId)) {
-            if (otherUser != user) { // לא להמליץ על סרטונים שהמשתמש הנוכחי כבר ראה
-                // הוספת סרטונים שהמשתמש האחר צפה בהם לרשימת ההמלצות
+            if (otherUser != user) { // Do not recommend videos the current user has already watched
+                // Add videos the other user has watched to the recommendations list
                 for (const auto& recVideo : userVideos.at(otherUser)) {
-                    // בדיקה אם הסרטון כבר נמצא ברשימת ההמלצות
+                    // Check if the video is already in the recommendations list
                     if (std::find(recommendations.begin(), recommendations.end(), recVideo) == recommendations.end()) {
-                        recommendations.push_back(recVideo); // הוספת הסרטון להמלצות
+                        recommendations.push_back(recVideo); // Add the recommended video to the recommendations list
                     }
                 }
             }
@@ -28,7 +28,7 @@ std::vector<std::string> getVideoRecommendations(const std::string& user, const 
         std::cout << "Video ID not found in videoUsers map." << std::endl;
     }
 
-    return recommendations; // החזרת רשימת הסרטונים המומלצים
+    return recommendations; // Return the list of recommended videos
 }
 
 

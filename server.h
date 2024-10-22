@@ -7,26 +7,26 @@
 #include <map>
 #include <mutex>
 
-// מיפוי של סרטונים לפי משתמשים ומיפוי של משתמשים לפי סרטונים
+// Maps for associating videos with users and users with videos
 extern std::map<std::string, std::vector<std::string>> userVideos;
 extern std::map<std::string, std::vector<std::string>> videoUsers;
-extern std::mutex dbMutex;  // נעילה עבור גישה למסד נתונים במקביל
+extern std::mutex dbMutex;  // Mutex for thread-safe access to the database
 
 class Server {
 public:
-    void start(int port);  // פונקציה להפעלת השרת
+    void start(int port); // Function to start the server
 };
 
-// פונקציות ניהול מסד הנתונים
-bool loadFromFile(const std::string& filename);  // טעינת נתונים מקובץ
-bool saveToFile(const std::string& filename);  // שמירת נתונים לקובץ
-void addMapping(const std::string& userID, const std::string& videoID);  // הוספת מיפוי משתמש-סרטון
-std::vector<std::string> getVideosForUser(const std::string& userID);  // קבלת סרטונים עבור משתמש
-const std::map<std::string, std::vector<std::string>>& getUserToVideos();  // חשיפת מיפוי משתמשים לסרטונים
-const std::map<std::string, std::vector<std::string>>& getVideoToUsers();  // חשיפת מיפוי סרטונים למשתמשים
+// Database management functions
+bool loadFromFile(const std::string& filename);   // Load data from a file
+bool saveToFile(const std::string& filename);   // Save data to a file
+void addMapping(const std::string& userID, const std::string& videoID);  // Add a user-to-video mapping
+std::vector<std::string> getVideosForUser(const std::string& userID); // Get the list of videos for a user
+const std::map<std::string, std::vector<std::string>>& getUserToVideos(); // Return the user-to-videos map
+const std::map<std::string, std::vector<std::string>>& getVideoToUsers();  // Return the video-to-users map
 std::string trim(const std::string& s);
 
-// פונקציות טיפול בלקוחות
-void handleClient(int clientSocket);  // טיפול בלקוח
+// Client handling functions
+void handleClient(int clientSocket);  // Handle a client connection
 
 #endif // SERVER_H

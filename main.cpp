@@ -4,7 +4,7 @@
 int main() {
     std::cout << "Starting server..." << std::endl;
     Server server;
-    server.start(5555);  // הרצת השרת על פורט 5555
+    server.start(5555);  // Run the server on port 5555
     
     return 0;
 }
