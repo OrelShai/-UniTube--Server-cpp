@@ -1,10 +1,7 @@
-Noa:irel:9
-Noa Kirel:7,2,1
-Noa:irel:10:
+Noa Kirel :6,9,8,10
 
-1:Noa Kirel
-10:Noa:irel:
-2:Noa Kirel
-7:Noa Kirel
-9:Noa:irel
+10:Noa Kirel 
+6:Noa Kirel 
+8:Noa Kirel 
+9:Noa Kirel 
 

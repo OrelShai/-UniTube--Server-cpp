@@ -205,11 +205,11 @@ void handleClient(int clientSocket) {
             }
 
         } 
-        // אם ההודעה מכילה "User {username} watched Video {videoId}" - עדכון מסד הנתונים
-        else if (message.find("User ") == 0 && message.find(" watched Video ") != std::string::npos) {
-            size_t userStart = message.find("User ") + 5;
-            size_t watchedPos = message.find(" watched Video ");
-            size_t videoStart = message.find("Video ") + 6;
+  // אם ההודעה מכילה "User:{username},watchedVideo:{videoId}" - עדכון מסד הנתונים
+        else if (message.find("User:") == 0 && message.find(",watchedVideo:") != std::string::npos) {
+            size_t userStart = message.find("User:") + 5;
+            size_t watchedPos = message.find(",watchedVideo:");
+            size_t videoStart = watchedPos + 14;
 
             userName = message.substr(userStart, watchedPos - userStart);
             videoId = message.substr(videoStart);
