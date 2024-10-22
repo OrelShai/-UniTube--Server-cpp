@@ -24,6 +24,7 @@ void addMapping(const std::string& userID, const std::string& videoID);  // הו
 std::vector<std::string> getVideosForUser(const std::string& userID);  // קבלת סרטונים עבור משתמש
 const std::map<std::string, std::vector<std::string>>& getUserToVideos();  // חשיפת מיפוי משתמשים לסרטונים
 const std::map<std::string, std::vector<std::string>>& getVideoToUsers();  // חשיפת מיפוי סרטונים למשתמשים
+std::string trim(const std::string& s);
 
 // פונקציות טיפול בלקוחות
 void handleClient(int clientSocket);  // טיפול בלקוח
