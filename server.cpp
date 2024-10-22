@@ -121,6 +121,9 @@ bool saveToFile(const std::string& filename) {
 void addMapping(const std::string& userID, const std::string& videoID) {
     std::lock_guard<std::mutex> lock(dbMutex);  // נעילה למניעת בעיות במקביל
 
+std::string trimmedUserID = trim(userID);  // חיתוך רווחים
+    std::string trimmedVideoID = trim(videoID);  // חיתוך רווחים
+    
     // הוספת הסרטון למשתמש אם אינו קיים כבר
     if (std::find(userVideos[userID].begin(), userVideos[userID].end(), videoID) == userVideos[userID].end()) {
         userVideos[userID].push_back(videoID);
