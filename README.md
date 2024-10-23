@@ -83,13 +83,9 @@ After compiling, run the server using the command:
 
 You can configure several settings of the server:
 
-1. **Port**:  
+**Port**:  
    Define the port number the server listens to by modifying the `server.cpp` file.  
    Example:  
    ```cpp
    #define PORT 8080
    ```
-
-2. **Max Connections:**:
-Set the maximum number of concurrent connections the server can handle. This is defined in the main.cpp.
-
