@@ -23,9 +23,10 @@ This project implements a multithreaded C++ server designed to process client re
   
 ### Cloning the Repository
 ```bash
-git clone https://github.com/your-repo/cpp-server-recommendations.git
-cd cpp-server-recommendations
+git clone https://github.com/OrelShai/-UniTube--Server-cpp.git
+cd -UniTube--Server-cpp
 ```
+alternatively, you can clone a GitHub repository into any folder of your choice on your local machine
 
 ## Compiling and Running the Server
 
